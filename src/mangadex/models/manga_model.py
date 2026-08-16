@@ -99,3 +99,26 @@ class Manga(BaseModel):
     type: str
     attributes: MangaAttributes
     relationships: list[Relationship]
+
+
+class MangaChapterAttributes(BaseModel):
+    volume: str | None
+    chapter: str
+    title: str | None
+    translated_language: str
+    external_url: str | None
+    is_unavailable: bool
+    publish_at: datetime | None
+    readable_at: datetime | None
+    created_at: datetime | None
+    updated_at: datetime | None
+    version: int
+    pages: int
+
+
+class MangaChapter(BaseModel):
+    id: str
+    type: str
+    attributes: MangaChapterAttributes
+    relationships: list[Relationship]
+
