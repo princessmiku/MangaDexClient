@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Generic, Literal, Mapping, TypeVar, cast, TypeAlias, Iterator
+from typing import Any, Callable, Generic, Literal, Mapping, TypeVar, TypeAlias, Iterator
 
 import httpx
 
@@ -12,6 +12,7 @@ from ..exceptions import APIClientError, ResourceNotFoundError
 T = TypeVar("T", bound=BaseModel)
 
 ResponseType = Literal["entity", "collection"]
+RequestCallable = Callable[..., httpx.Response]
 
 
 class Methods(StrEnum):
@@ -94,9 +95,11 @@ class BaseResource:
     def __init__(
         self,
         client: httpx.Client,
+        request: RequestCallable,
         debug: bool = False,
     ) -> None:
         self._client = client
+        self._request = request
         self._debug = debug
 
     def _handle_request(
@@ -125,7 +128,7 @@ class BaseResource:
                 if "json" in kwargs:
                     print(f"[DEBUG] JSON: {kwargs['json']}")
 
-            response = self._client.request(
+            response = self._request(
                 method=str(method),
                 url=url,
                 **kwargs,

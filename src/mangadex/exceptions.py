@@ -20,3 +20,7 @@ class APIClientError(Exception):
 
 class ResourceNotFoundError(APIClientError):
     """Die angefragte Ressource wurde nicht gefunden."""
+
+
+class RateLimitError(APIClientError):
+    """Zu viele Anfragen in zu kurzer Zeit"""

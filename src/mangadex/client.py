@@ -1,3 +1,5 @@
+import time
+from threading import Lock
 from typing import Any
 
 import httpx
@@ -8,14 +10,25 @@ from mangadex.resources.manga import MangaResource
 
 class MangaDexClient:
     def __init__(
-        self,
-        debug: bool = False,
-        *,
-        timeout: float = 30.0,
-        transport: httpx.BaseTransport | None = None,
+            self,
+            debug: bool = False,
+            *,
+            timeout: float = 30.0,
+            transport: httpx.BaseTransport | None = None,
+            rate_limit_per_second: float = 4,
     ):
+        if (
+            isinstance(rate_limit_per_second, bool)
+            or rate_limit_per_second <= 0
+        ):
+            raise ValueError("rate_limit_per_second must be greater than zero")
+
         self._base_url = "https://api.mangadex.org"
         self._debug = debug
+        self._rate_limit_per_second = rate_limit_per_second
+        self._request_interval = 1 / rate_limit_per_second
+        self._next_request_time = 0.0
+        self._request_lock = Lock()
 
         self._http_client = httpx.Client(
             base_url=self._base_url,
@@ -25,7 +38,11 @@ class MangaDexClient:
             transport=transport,
         )
 
-        self._manga = MangaResource(self._http_client, debug=self._debug)
+        self._manga = MangaResource(
+            self._http_client,
+            self._rate_limited_request,
+            debug=self._debug,
+        )
 
     @property
     def debug(self) -> bool:
@@ -35,16 +52,38 @@ class MangaDexClient:
     def manga(self) -> MangaResource:
         return self._manga
 
-    def raw_request(
+    def can_make_request(self) -> bool:
+        """Returns True if the client can make a request, False otherwise."""
+        return time.monotonic() >= self._next_request_time
+
+    def _rate_limited_request(
         self,
         method: str,
         url: str,
         **kwargs: Any,
-    ) -> Any:
-        """Führt einen unverarbeiteten API-Request aus und gibt dessen JSON zurück.
+    ) -> httpx.Response:
+        """Sendet eine reguläre API-Anfrage unter Einhaltung des Limits."""
+        with self._request_lock:
+            now = time.monotonic()
+            request_time = max(now, self._next_request_time)
+            self._next_request_time = request_time + self._request_interval
 
-        Zusätzliche Argumente werden unverändert an ``httpx.Client.request``
-        weitergegeben, zum Beispiel ``params``, ``json`` oder ``headers``.
+        wait_time = request_time - now
+        if wait_time > 0:
+            time.sleep(wait_time)
+
+        return self._http_client.request(method=method, url=url, **kwargs)
+
+    def raw_request(
+            self,
+            method: str,
+            url: str,
+            **kwargs: Any,
+    ) -> Any:
+        """Executes an unprocessed API request and returns its JSON.
+
+        Additional arguments are passed on unmodified to ``httpx.Client.request``
+        , for example ``params``, ``json`` or ``headers``.
         """
         try:
             if self._debug:
@@ -115,7 +154,8 @@ class MangaDexClient:
         self.close()
 
     def close(self):
-        self._http_client.close()
+        if hasattr(self, "_http_client"):
+            self._http_client.close()
 
     def __del__(self):
         self.close()
