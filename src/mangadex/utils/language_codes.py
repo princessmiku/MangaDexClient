@@ -1,0 +1,3 @@
+
+class LanguageCodes:
+    ENGLISH = "en"

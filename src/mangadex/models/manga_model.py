@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from collections.abc import Iterator
 from typing import Any, Mapping

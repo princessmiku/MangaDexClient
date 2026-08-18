@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import types
 from datetime import date, datetime
+from enum import Enum
 from typing import (
     Any,
     ClassVar,
@@ -210,6 +212,58 @@ class BaseModel:
                     f"{value!r} kann nicht in "
                     f"{target_type.__name__} umgewandelt werden"
                 ) from exc
+
+        return value
+
+    def to_dict(self) -> dict[str, Any]:
+        hints = get_type_hints(type(self))
+
+        result = {}
+
+        for field_name, field_type in hints.items():
+            if get_origin(field_type) is ClassVar:
+                continue
+
+            result[field_name] = self._serialize_value(
+                getattr(self, field_name)
+            )
+
+        return result
+
+    def to_json(self, **kwargs: Any) -> str:
+        return json.dumps(
+            self.to_dict(),
+            **kwargs,
+        )
+
+    @classmethod
+    def _serialize_value(cls, value: Any) -> Any:
+        if value is None:
+            return None
+
+        if isinstance(value, BaseModel):
+            return value.to_dict()
+
+        if isinstance(value, datetime):
+            return value.isoformat()
+
+        if isinstance(value, date):
+            return value.isoformat()
+
+        if isinstance(value, Enum):
+            return value.value
+
+        if isinstance(value, Mapping):
+            return {
+                key: cls._serialize_value(item)
+                for key, item in value.items()
+            }
+
+        if isinstance(value, (list, tuple, set)):
+            return [
+                cls._serialize_value(item)
+                for item in value
+            ]
 
         return value
 

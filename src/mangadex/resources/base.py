@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Callable, Generic, Literal, Mapping, TypeVar, TypeAlias, Iterator
+from typing import Any, Callable, Generic, Literal, Mapping, TypeVar, TypeAlias, Iterator, Iterable
 
 import httpx
 
@@ -68,6 +68,9 @@ class CollectionResponse(Generic[T]):
     @property
     def is_collection(self) -> Literal[True]:
         return True
+
+    def sort(self, key: Callable[[T], Any], reverse: bool = False) -> None:
+        self.data.sort(key=key, reverse=reverse)
 
     def __iter__(self) -> Iterator[T]:
         return iter(self.data)
