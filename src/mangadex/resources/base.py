@@ -6,7 +6,7 @@ from typing import Any, Callable, Generic, Literal, Mapping, TypeVar, TypeAlias,
 import httpx
 
 from ..models.base_model import BaseModel, ModelError
-from ..exceptions import APIClientError, ResourceNotFoundError
+from ..exceptions import APIClientError, RateLimitError, ResourceNotFoundError
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -179,6 +179,19 @@ class BaseResource:
             if status_code == httpx.codes.NOT_FOUND:
                 raise ResourceNotFoundError(
                     message="Resource not found",
+                    status_code=status_code,
+                    response_body=response_body,
+                ) from exc
+
+            if status_code == httpx.codes.TOO_MANY_REQUESTS:
+                retry_after = exc.response.headers.get(
+                    "X-RateLimit-Retry-After"
+                )
+                message = "MangaDex rate limit reached"
+                if retry_after is not None:
+                    message += f"; retry after UNIX timestamp {retry_after}"
+                raise RateLimitError(
+                    message=message,
                     status_code=status_code,
                     response_body=response_body,
                 ) from exc

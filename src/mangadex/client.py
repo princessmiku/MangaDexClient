@@ -4,18 +4,24 @@ from typing import Any
 
 import httpx
 
-from mangadex.exceptions import APIClientError, ResourceNotFoundError
+from mangadex.exceptions import (
+    APIClientError,
+    RateLimitError,
+    ResourceNotFoundError,
+)
 from mangadex.resources.manga import MangaResource
 
 
 class MangaDexClient:
+    _AT_HOME_SERVER_REQUEST_INTERVAL = 60 / 40
+
     def __init__(
             self,
             debug: bool = False,
             *,
             timeout: float = 30.0,
             transport: httpx.BaseTransport | None = None,
-            rate_limit_per_second: float = 4,
+            rate_limit_per_second: float = 0.5,
     ):
         if (
             isinstance(rate_limit_per_second, bool)
@@ -28,6 +34,7 @@ class MangaDexClient:
         self._rate_limit_per_second = rate_limit_per_second
         self._request_interval = 1 / rate_limit_per_second
         self._next_request_time = 0.0
+        self._next_at_home_server_request_time = 0.0
         self._request_lock = Lock()
 
         self._http_client = httpx.Client(
@@ -66,7 +73,19 @@ class MangaDexClient:
         with self._request_lock:
             now = time.monotonic()
             request_time = max(now, self._next_request_time)
+            is_at_home_server_request = url.lstrip("/").startswith(
+                "at-home/server/"
+            )
+            if is_at_home_server_request:
+                request_time = max(
+                    request_time,
+                    self._next_at_home_server_request_time,
+                )
             self._next_request_time = request_time + self._request_interval
+            if is_at_home_server_request:
+                self._next_at_home_server_request_time = (
+                    request_time + self._AT_HOME_SERVER_REQUEST_INTERVAL
+                )
 
         wait_time = request_time - now
         if wait_time > 0:
@@ -96,7 +115,7 @@ class MangaDexClient:
                 if "json" in kwargs:
                     print(f"[DEBUG] JSON: {kwargs['json']}")
 
-            response = self._http_client.request(
+            response = self._rate_limited_request(
                 method=method,
                 url=url,
                 **kwargs,
@@ -125,6 +144,19 @@ class MangaDexClient:
             if status_code == httpx.codes.NOT_FOUND:
                 raise ResourceNotFoundError(
                     message="Resource not found",
+                    status_code=status_code,
+                    response_body=response_body,
+                ) from exc
+
+            if status_code == httpx.codes.TOO_MANY_REQUESTS:
+                retry_after = exc.response.headers.get(
+                    "X-RateLimit-Retry-After"
+                )
+                message = "MangaDex rate limit reached"
+                if retry_after is not None:
+                    message += f"; retry after UNIX timestamp {retry_after}"
+                raise RateLimitError(
+                    message=message,
                     status_code=status_code,
                     response_body=response_body,
                 ) from exc

@@ -11,7 +11,7 @@ class MangaResource(BaseResource):
     def get_by_id(self, id: str) -> Manga:
         return self._handle_entity_request(Manga, Methods.GET, f"/manga/{id}")
 
-    def get_chapters(self, id: str, language: str | list[str] | None = None, include_unavailable: bool = False, sort_by_chapter: str | None = None) -> CollectionResponse[MangaChapter]:
+    def get_chapters(self, id: str, language: str | list[str] | None = None, include_unavailable: bool = False, sort_by_chapter: str | None = None, offset: int = 0) -> CollectionResponse[MangaChapter]:
         params = {}
         if language is not None:
             if isinstance(language, str):
@@ -19,6 +19,8 @@ class MangaResource(BaseResource):
             params["translatedLanguage[]"] = language
         if include_unavailable:
             params["includeUnavailable"] = True
+        if offset > 0:
+            params["offset"] = offset
         collection: CollectionResponse[MangaChapter] = self._handle_collection_request(MangaChapter, Methods.GET, f"/manga/{id}/feed", params=params)
         if sort_by_chapter and sort_by_chapter in ["asc", "desc"]:
             collection.sort(key=lambda x: x.attributes.chapter, reverse=sort_by_chapter == "desc")
