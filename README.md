@@ -4,25 +4,30 @@
 
 ## Installation
 
-Install a released version from PyPI:
+Requires Python 3.11 or newer. Install from a local checkout:
 
 ```bash
-pip install mangadex
+python -m pip install .
 ```
 
 Or install the current version directly from GitHub:
 
 ```bash
-pip install "mangadex @ git+https://github.com/<YOUR-USERNAME>/MangaDex.git"
+python -m pip install "mangadex @ git+https://github.com/princessmiku/MangaDexClient.git"
 ```
 
 To use a specific Git tag, branch, or commit, append a revision after the repository URL:
 
 ```bash
-pip install "mangadex @ git+https://github.com/<YOUR-USERNAME>/MangaDex.git@v0.1.0"
+python -m pip install "mangadex @ git+https://github.com/princessmiku/MangaDexClient.git@<revision>"
 ```
 
-Replace `<YOUR-USERNAME>` with your GitHub account name after the repository has been pushed.
+Replace `<revision>` with an existing tag, branch, or commit. Git must be installed
+for installation from GitHub. Runtime dependencies (`httpx` and `tqdm`) are
+installed automatically.
+
+The distribution name is `mangadex`; the import is `from mangadex import MangaDexClient`.
+The commands above install this repository directly and do not require a PyPI release.
 
 ## Usage
 
@@ -53,16 +58,23 @@ with MangaDexClient() as client:
 
 ## Development
 
+Install in editable mode so source changes take effect immediately:
+
+```bash
+python -m pip install -e .
+```
+
 Build distributable files locally:
 
 ```bash
+python -m pip install build
 python -m build
 ```
 
 This creates a wheel and source distribution in `dist/`. Install the generated wheel with:
 
 ```bash
-pip install dist/mangadex-0.1.0-py3-none-any.whl
+python -m pip install dist/mangadex-0.1.0-py3-none-any.whl
 ```
 
 ## Releases

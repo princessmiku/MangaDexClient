@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/mangadex.iml" filepath="$PROJECT_DIR$/.idea/mangadex.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/worker-client.iml" filepath="$PROJECT_DIR$/.idea/worker-client.iml" />
     </modules>
   </component>
 </project>
