@@ -78,6 +78,12 @@ class MangaDownloader:
         if manga_chapter is None:
             raise ValueError(f"Chapter {chapter_id} not found")
 
+        if manga_chapter.attributes.external_url:
+            self._write(f"! Kapitel {chapter_id}: Extern verlinktes Kapitel wird übersprungen.")
+            if overall_progress is not None:
+                overall_progress.update(1)
+            return 0, 0
+
         chapter_directory = self.get_chapter_directory(chapter_id)
         downloaded_pages: list[str] = []
         known_pages = {
@@ -177,6 +183,8 @@ class MangaDownloader:
         manga_chapter: MangaChapter
         for manga_chapter in chapters:
             self.manga_chapters[manga_chapter.id] = manga_chapter
+            if manga_chapter.attributes.external_url:
+                continue
             chapter_number = manga_chapter.attributes.chapter.replace(".", "_")
             if chapter_number not in sorted_chapters:
                 sorted_chapters[chapter_number] = []
